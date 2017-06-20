@@ -22,7 +22,7 @@ Change Log:
 #
 param (
   [Parameter(Mandatory = $true, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
-  [string] $VMName= $(throw "-VMName is required."),
+  [string] $VMName= $(throw "-VM Name is required."),
   [string] $SourceVCenterServers = $(throw "-Source VCenter Server is required"),
   [string] $TargetVCenterServers = $(throw "-Target VCenter Server is required"),
   [string] $TargetResourcePool = $(throw "-Target VM Resource Pool is required")
@@ -67,8 +67,7 @@ $VMNetworkInfo = Get-NetworkAdapter -VM $VMName -Server $SourceVCenterServers
 Write-Host "Captured the Network Info for $VMName `n $VMNetworkInfo"
 $VMPowerState = (Get-VM -Name $VMName -Server $SourceVCenterServers | Select PowerState).PowerState
 If ($VMPowerState -ne "PoweredOff"){
-  Write-Host "$VMName is currently running.  Are you sure you want to proceed with a shutdown and migration (Y/N)?"
-  $Response = read-host
+  $Response = Read-Host "$VMName is currently running.  Are you sure you want to proceed with a shutdown and migration (Y/N)?"
   If ($Response -ne "Y" -or $Response -ne "y") {Exit}
   Get-VM -Name $VMName -Server $SourceVCenterServers | Stop-VMGuest -Confirm:$false
   $i = 0
@@ -88,14 +87,14 @@ New-VM -VMFilePath $VMXPath -Server $TargetVCenterServers -ResourcePool $TargetR
 IF (!(Get-VM $VMName -Server $TargetVCenterServers)) {Write-Host "Added $VMName to $TargetVCenterServers"}
 Else {Write-Host "Error adding $VMName to $TargetVCenters"}
 ForEach ($VMNic in $VMNetworkInfo) {
-  Get-VM -Name $VMName | Get-NetworkAdapter | Where {$_.Name -like $VMNic.Name} | Set-NetworkAdapter -NetworkName ($VMNic.NetworkName) -Confirm:$false
-  $VMNewNetworkInfo = Get-NetworkAdapter -VM $VMName
+  Get-VM -Name $VMName -Server $TargetVCenterServers | Get-NetworkAdapter | Where {$_.Name -like $VMNic.Name} | Set-NetworkAdapter -NetworkName ($VMNic.NetworkName) -Confirm:$false
+  $VMNewNetworkInfo = Get-NetworkAdapter -VM $VMName -Server $TargetVCenterServers
   Write-Host "$VMName - " $VMNic.Name " is now connected to "$VMNewNetworkInfo.Name
 }
 IF($VMNetworkInfo.NetworkName -eq $VMNewNetworkInfo.NetworkName -and $VMNetworkInfo.Type -eq $VMNewNetworkInfo.Type -and $VMNetworkInfo.MacAddress -eq $VMNewNetworkInfo.MacAddress ) {
   Write-Host "Old Network and New Network match."
   Start-VM -VM $VMName -Server $TargetVCenterServers
-  Get-VM -Name $VMName -Server $TargetVCenterServers | Get-VMQuestion | Set-VMQuestion -Option "I moved It" -Confirm:$False
+  IF (!(Get-VMQuestion -VM $VMName -Server $TargetVCenterServers)) {Get-VM -Name $VMName -Server $TargetVCenterServers | Get-VMQuestion | Set-VMQuestion -Option "I moved it" -Confirm:$False}
   $VMNetworkInfo | Export-Excel -Path $OutputFile -WorkSheetname "$SourceVCenterServers"
   $VMNewNetworkInfo | Export-Excel -Path $OutputFile -WorkSheetname "$TargetVCenterServers"
 }
