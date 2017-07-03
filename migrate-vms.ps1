@@ -79,7 +79,7 @@ If ($VMPowerState -ne "PoweredOff"){
     Start-Sleep 30
   } 
 }
-Else {Write-Host "$VMName was already powered off.  Continuing Script"}
+Else {Write-Host "$VMName is powered off.  Continuing Script"}
 Remove-VM -VM $VMName -Server $SourceVCenterServers -Confirm:$false
 Write-Host "Removed $VMName from inventory on $SourceVCenterServers"
 # Disconnect-VIServer $SourceVCenterServers
